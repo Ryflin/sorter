@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     map<string, string> extens = file_and_path();
     vector <string> filesInDownloads;
     string hostname = get_hostname();
-    string path = hostname + "/code/test";
+    string path = hostname + "/Downloads";
     cout << path << endl;
     for (const auto & entry : fs::directory_iterator(path))
         filesInDownloads.push_back(entry.path().filename().string());
