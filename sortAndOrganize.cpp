@@ -22,54 +22,73 @@ bool output_to_user(const string &output);
 bool output_to_file(const string &output, const string &file);
 vector<string> get_extension(vector<string> fileNames);
 
+/**
+ * Main function
+ * 
+ * This function is the entry point of the program. It initializes the program by updating the code folder with the GitHub repository, 
+ * then it organizes the Downloads folder by moving files to their appropriate locations based on their file extensions.
+ * 
+ * @param argc number of command line arguments
+ * @param argv array of command line arguments
+ * @return 0 if successful, non-zero otherwise
+ */
 int main(int argc, char *argv[]) {
     // update code folder with gh repo 
     // this includes autogenerating repos as necessary
     github_repo_update();
-    string programLocation = fs::current_path().string();
+    // obtains a map of all the names and associated paths to place
     map<string, string> extens = file_and_path();
     vector <string> filesInDownloads;
     string hostname = get_hostname();
     string path = hostname + "/Downloads";
-    cout << path << endl;
+    // fills filesInDownloads with all the file names in the Downloads folder
     for (const auto & entry : fs::directory_iterator(path))
         filesInDownloads.push_back(entry.path().filename().string());
+    // fills fileExt with the extension names of the files in the Downloads folder
     vector<string> fileExt = get_extension(filesInDownloads);
     for (int i = 0; i < fileExt.size(); i++) {
-        bool descriptiveEnough = false;
         if (filesInDownloads[i].find("Cert") != string::npos || filesInDownloads[i].find("cert")!= string::npos) {
+            // move certificate files to the certs folder
             fs::rename(filesInDownloads[i],   + "/Documents/certs/" + filesInDownloads[i]);
-        } else if (descriptive_enough(filesInDownloads[i])) {
+        } else {
+            // rename files that are not descriptive enough
             string new_file_name = filesInDownloads[i].substr(0, filesInDownloads[i].find_last_of("."));
-            while (descriptive_enough(new_file_name) && descriptiveEnough == false){
+            // while loop used so that if user doesn't give a descriptive enough name they can be prompted again. 
+            while (descriptive_enough(new_file_name)){
+            // output_to_user is used instead of a cout to allow me to have the function interact with a gui later (and make that easier)
                 output_to_user("Your file name (" + filesInDownloads[i] + ") may not be descriptive enough. Would you like to rename it? (y/n): ");
                 string input = input_from_user();
                 if (input == "y" || input == "Y" || input == "\n") {
                     output_to_user("Please enter a new file name: ");
                     string new_file_name = input_from_user();
+                    // renames file in system
                     fs::rename(path + "/" + filesInDownloads[i], path + "/" + new_file_name);
                     filesInDownloads[i] = new_file_name + fileExt[i];
                 } else {
                     break;
                 }
             }
+            // renames file in program
             filesInDownloads[i] = new_file_name + "."+ fileExt[i];
-            descriptiveEnough = true;
         }
         if (fileExt[i] == "deb"){
+            // remove deb files
             fs::remove(filesInDownloads[i]);
         }
         // moves all the files to the designated folder in the file_and_path.txt
         auto it = extens.find(fileExt[i]);
         if (it != extens.end() && filesInDownloads[i].length() > 0) {
+            // move file to the specified directory
             fs::rename(path + "/" + filesInDownloads[i], it->second + "/" + filesInDownloads[i]);
         } else {
+            // ask user to specify the directory for unrecognized file extensions
             output_to_user("The file extension of " + fileExt[i] + " is not recognized. Please designate the default location for this file extension: ");
             string newPath = input_from_user();
             while (!fs::exists(newPath) ) {
                 output_to_user("file path doest not exist. Would you like to create it? (y/n): ");
                 if (input_from_user() == "y" || input_from_user() == "Y" || input_from_user() == "\n") {
                     try {
+                        // create the directory if it does not exist
                         fs::create_directories(newPath);
                     }
                     catch (const fs::filesystem_error& e) {
@@ -78,8 +97,10 @@ int main(int argc, char *argv[]) {
                 }
             }
             if (filesInDownloads[i].length() > 0) {
+                // move the file to the specified directory
                 fs::rename(path + "/" + filesInDownloads[i], newPath + "/" + filesInDownloads[i]);
             }
+            // add the new directory to the file_and_path.txt
             output_to_file(fileExt[i] + ":" + newPath, "file_and_path.txt");
             extens[fileExt[i]] = newPath;
         }
